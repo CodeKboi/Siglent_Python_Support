@@ -3,8 +3,17 @@
 Created on Wed Dec  6 09:16:06 2023
 
 @author: kevin
+
+Digital Signal Oscilloscope Support for SDS2102X specifically but it can be
+used with other models with no or little tinkering in this module
+
 """
 
+"""
+TODOs:
+    1. Adjust the scaling factors on set scale to choose from the default scale values
+    2. Add a functionality to automatically set the number of points acquired
+"""
 
 # Convert this entire thing using numpy arrays
 import pyvisa as visa
@@ -23,16 +32,64 @@ tdiv_enum = [100e-12, 200e-12, 500e-12, 1e-9,
 HORI_NUM = 10
 
 def resourcer():
-    # Initialising Resource manager
+    """
+    Initialising Resource manager. It manages all the instruments connected 
+    to the system
+    
+    Parameters
+    ----------
+        None
+    
+    Returns
+    -------
+    ResourceManager
+        
+    
+    Usage
+    -----
+        rm = resourcer()
+        
+    """
     return visa.ResourceManager()
 
 # Oscilloscope commands
-def initialise(ID,rm): # Opening the Resource
-
-    # Opening instrument
-    return rm.open_resource(ID)
+def initialise(ID:str,rm):
+    """
+    Initiliases a particular resource given a VISA ID
+    Pass any invalid string to list all available resources
+    
+    Parameters
+    ----------
+        ID : str 
+        rm : ResourceManager
+    
+    Returns
+    -------
+        Instrument object 
+        
+        or 
+        
+        Lists available resources
+        
+    Usage
+    -----
+        instrument = initialise(ID,rm) # rm is defined by resourcer()
+        
+    """
+    avail_res = rm.list_resources()
+    if ID in avail_res:
+        return rm.open_resource(ID)
+    else:
+        print("These are the available resources:")
+        print(avail_res)
+        print("You can use the *IDN? command to check your connection.")
 
 def main_desc(recv):
+    """
+    Internal Function:
+        Decodes the Data block received.
+        Refer the programming manual for more information
+    """
      WAVE_ARRAY_1 = recv[0x3c:0x3f + 1]
      wave_array_count = recv[0x74:0x77 + 1]
      first_point = recv[0x84:0x87 + 1]
@@ -59,12 +116,11 @@ def main_desc(recv):
      adc_bit = struct.unpack('h', adc_bit)[0]
      tdiv = tdiv_enum[tdiv_index]
      return vdiv, offset, interval, delay, tdiv, code, adc_bit
-
- def readwaveform(instr,channel=1,s_interval=1,start_point=0):
-    # Setting the initial parameters
-    
-    # Add the points stuff here
-    
+# TODOs : 2. Add a functionality to automatically set the number of points acquired
+def readwaveform(instr,channel=1,s_interval=1,start_point=0):
+    """
+    Reads the waveform for a single channel
+    """
     # Set the channel to be read from
     instr.write(":WAVeform:SOURce C"+str(channel))
     # Ask for preamble of that channel
@@ -106,7 +162,10 @@ def main_desc(recv):
     
     return volt_value,time_value
     
-def burst_read(instr,channel=1,s_interval=1,start_point=0): # For reading Multiple channels quickly
+def burst_read(instr,channel=1,s_interval=1,start_point=0): 
+    """
+    Reads the multiple channels in one shot
+    """
     if type(channel) == int:
         readwaveform(instr,channel,s_interval,start_point)
     else:
@@ -165,7 +224,11 @@ def burst_read(instr,channel=1,s_interval=1,start_point=0): # For reading Multip
         
         return volt_value,time_value
     
-def average_read(instr,channel=1,s_interval=1,start_point=0,averages=2): # For reading Multiple channels quickly
+def average_read(instr,channel=1,s_interval=1,start_point=0,averages=2): 
+    """
+    Reads the multiple channels in one shot and averages 
+    it a specified number of times before saving
+    """
     if type(channel) == int:
         readwaveform(instr,channel,s_interval,start_point)
     else:
@@ -236,19 +299,41 @@ def average_read(instr,channel=1,s_interval=1,start_point=0,averages=2): # For r
             time_value.append(time_data)
         
         return volt_buff,time_value    
+# TODOs: 1. Adjust the scaling factors on set scale to choose from the default scale values
 
-def set_scale(instr,channel=None,vert=None,hori=None):
+def set_scale(instr,channel=None,vert=None,hori=None,v_offset=None):
+    """
+    Setting the vertical and horizontal scales and offsets
+    """
     if hori is not None:
         instr.write(":TIM:SCAL {}".format(hori))
-    if vert is not None:
+    elif vert is not None:
         if channel is not None:
             instr.write(":CHAN{}:SCAL {}".format(channel,vert))
+        else:
+            print("Invalid Input")
+    elif v_offset is not None:
+        if channel is not None:
+            instr.write(":CHAN{}:OFFS {}".format(channel,v_offset))
         else:
             print("Invalid Input")
     else:
         print("Invalid Input")
 
-def deinitialise(instr): # Close the instruments
+def deinitialise(instr):
+    """
+    Closes the instrument or resourcemanager
+    Must be done at the end of the session or opening a new session
+    
+    Parameters
+    ----------
+        instr : instrument
+        
+    
+    Usage
+    -----
+        deinitialise(instrument)
+    """
     instr.close()
 
 
@@ -262,7 +347,7 @@ if __name__ == "__main__":
     instrument = initialise(ID_oscilloscope,rm)
     #instrument.write(":WAVeform:POINt 10000000") 
     instrument.timeout = 30000 # default value is 2000(2s)
-    instrument.chunk_size = 20 * 1024 * 1024 # default value is 20*1024(20k bytes)
+    instrument.chunk_size = 20 * 1024 * 1024 # default value is 20*1024(increase this if all the data is not being captured)
     channel_to_be_measured = [1,2]
     #instrument.write(":TRIG:MOD SING")
     # Returns three column matrix with 2 voltage channels and 1 time array
