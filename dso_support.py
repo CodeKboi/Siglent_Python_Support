@@ -90,32 +90,32 @@ def main_desc(recv):
         Decodes the Data block received.
         Refer the programming manual for more information
     """
-     WAVE_ARRAY_1 = recv[0x3c:0x3f + 1]
-     wave_array_count = recv[0x74:0x77 + 1]
-     first_point = recv[0x84:0x87 + 1]
-     sp = recv[0x88:0x8b + 1]
-     v_scale = recv[0x9c:0x9f + 1]
-     v_offset = recv[0xa0:0xa3 + 1]
-     interval = recv[0xb0:0xb3 + 1]
-     code_per_div = recv[0xa4:0Xa7 + 1]
-     adc_bit = recv[0xac:0Xad + 1]
-     delay = recv[0xb4:0xbb + 1]
-     tdiv = recv[0x144:0x145 + 1]
-     probe = recv[0x148:0x14b + 1]
-     data_bytes = struct.unpack('i', WAVE_ARRAY_1)[0]
-     point_num = struct.unpack('i', wave_array_count)[0]
-     fp = struct.unpack('i', first_point)[0]
-     sp = struct.unpack('i', sp)[0]
-     interval = struct.unpack('f', interval)[0]
-     delay = struct.unpack('d', delay)[0]
-     tdiv_index = struct.unpack('h', tdiv)[0]
-     probe = struct.unpack('f', probe)[0]
-     vdiv = struct.unpack('f', v_scale)[0] * probe
-     offset = struct.unpack('f', v_offset)[0] * probe
-     code = struct.unpack('f', code_per_div)[0]
-     adc_bit = struct.unpack('h', adc_bit)[0]
-     tdiv = tdiv_enum[tdiv_index]
-     return vdiv, offset, interval, delay, tdiv, code, adc_bit
+    WAVE_ARRAY_1 = recv[0x3c:0x3f + 1]
+    wave_array_count = recv[0x74:0x77 + 1]
+    first_point = recv[0x84:0x87 + 1]
+    sp = recv[0x88:0x8b + 1]
+    v_scale = recv[0x9c:0x9f + 1]
+    v_offset = recv[0xa0:0xa3 + 1]
+    interval = recv[0xb0:0xb3 + 1]
+    code_per_div = recv[0xa4:0Xa7 + 1]
+    adc_bit = recv[0xac:0Xad + 1]
+    delay = recv[0xb4:0xbb + 1]
+    tdiv = recv[0x144:0x145 + 1]
+    probe = recv[0x148:0x14b + 1]
+    data_bytes = struct.unpack('i', WAVE_ARRAY_1)[0]
+    point_num = struct.unpack('i', wave_array_count)[0]
+    fp = struct.unpack('i', first_point)[0]
+    sp = struct.unpack('i', sp)[0]
+    interval = struct.unpack('f', interval)[0]
+    delay = struct.unpack('d', delay)[0]
+    tdiv_index = struct.unpack('h', tdiv)[0]
+    probe = struct.unpack('f', probe)[0]
+    vdiv = struct.unpack('f', v_scale)[0] * probe
+    offset = struct.unpack('f', v_offset)[0] * probe
+    code = struct.unpack('f', code_per_div)[0]
+    adc_bit = struct.unpack('h', adc_bit)[0]
+    tdiv = tdiv_enum[tdiv_index]
+    return vdiv, offset, interval, delay, tdiv, code, adc_bit
 # TODOs : 2. Add a functionality to automatically set the number of points acquired
 def readwaveform(instr,channel=1,s_interval=1,start_point=0):
     """

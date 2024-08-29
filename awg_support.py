@@ -75,32 +75,72 @@ def initialise(ID:str,rm):
 
 # TODOs : 3. Add Remaining Basic Wavetypes on set wave
 
-def set_wave(instr,channel=1,form=None,val=None,freq=None,amp=None,mean=None,stdev=None,noise_bw=None,offset=None,duty=None): # Creates the signal generator code
-    """
+def set_wave(instr,
+             channel:int=1,
+             form=None,
+             val=None,
+             freq=None,
+             period=None,
+             amp=None,
+             mean=None,
+             stdev=None,
+             noise_bw=None,
+             offset=None,
+             duty=None,
+             hlev=None,
+             llev=None,
+             width=None): # Creates the signal generator code 
+    '''
     Sets an in-built waveform with required 
     parameters to specified channel.
     
     Currently does not support PULSE ARB PRBS IQ
-    
+
     Parameters
     ----------
-        instr
-        channel=1
-        form : str 
-            Specify the waveform type
-            
-            Select from SINE SQUARE RAMP PULSE NOISE ARB DC PRBS IQ
-        freq=None
-        amp=None
-        mean=None
-        stdev=None
-        noise_bw=None
-        offset=None
-        
+    instr : TYPE
+        DESCRIPTION.
+    channel : int, optional
+        DESCRIPTION. The default is 1.
+    form : str, optional
+        Specify the waveform type. 
+        Select from SINE SQUARE RAMP PULSE NOISE ARB DC PRBS IQ. 
+        The default is None.
+    val : TYPE, optional
+        DESCRIPTION. The default is None.
+    freq : TYPE, optional
+        DESCRIPTION. The default is None.
+    period : TYPE, optional
+        DESCRIPTION. The default is None.
+    amp : TYPE, optional
+        DESCRIPTION. The default is None.
+    mean : TYPE, optional
+        DESCRIPTION. The default is None.
+    stdev : TYPE, optional
+        DESCRIPTION. The default is None.
+    noise_bw : TYPE, optional
+        DESCRIPTION. The default is None.
+    offset : TYPE, optional
+        DESCRIPTION. The default is None.
+    duty : TYPE, optional
+        DESCRIPTION. The default is None.
+    hlev : TYPE, optional
+        DESCRIPTION. The default is None.
+    llev : TYPE, optional
+        DESCRIPTION. The default is None.
+    width : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    None.
+    
     Usage
     -----
         set_wave(instrument,form = "SINE") 
-    """
+
+    '''
+    
     parameter_count = 0
     basic_query = "C{}:BSWV ".format(channel)
     forms = ["SINE", "SQUARE", "RAMP", "PULSE", "NOISE", "ARB", "DC", "PRBS", "IQ"]
@@ -120,6 +160,19 @@ def set_wave(instr,channel=1,form=None,val=None,freq=None,amp=None,mean=None,std
     elif form == forms[2]: # Ramp
         if duty is not None:
             basic_query += "DUTY,{},".format(duty)
+            parameter_count+=1
+    elif form == forms[3]: # Pulse
+        if period is not None:
+            basic_query += "PERI,{},".format(period)
+            parameter_count+=1
+        if width is not None:
+            basic_query += "WIDTH,{},".format(width)
+            parameter_count+=1
+        if hlev is not None:
+            basic_query += "HLEV,{},".format(hlev)
+            parameter_count+=1
+        if llev is not None:
+            basic_query += "LLEV,{},".format(llev)
             parameter_count+=1
             
     elif form == forms[4]: # noise
@@ -162,33 +215,55 @@ def set_wave(instr,channel=1,form=None,val=None,freq=None,amp=None,mean=None,std
 def arb_wave_constructor(instr,
                          wave,
                          dt,
+                         freq = None,
                          channel=1,
                          wave_name='wave1',
                          offset=0.0,
                          phase=0.0):
-    """
+    '''
     Sets an user-specified waveform from a numpy array
     with the time array
-    
-    
+
     Parameters
     ----------
-        instr
-        wave
-        dt
-        channel
-        wave_name
-        offset
-        phase
-        
+    instr : TYPE
+        DESCRIPTION.
+    wave : TYPE
+        DESCRIPTION.
+    dt : TYPE
+        DESCRIPTION.
+    freq : TYPE, optional
+        DESCRIPTION. The default is None.
+    channel : TYPE, optional
+        DESCRIPTION. The default is 1.
+    wave_name : TYPE, optional
+        DESCRIPTION. The default is 'wave1'.
+    offset : TYPE, optional
+        DESCRIPTION. The default is 0.0.
+    phase : TYPE, optional
+        DESCRIPTION. The default is 0.0.
+
+    Raises
+    ------
+    RuntimeError
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+    
     Usage
     -----
         arb_wave_constructor(instrument,wave,dt) 
-    """
+
+    '''
+
     # Encoding the wave into bytes
     vpp = max(abs(wave))
-    dt = dt[1]-dt[0]
-    freq = 1/dt
+    if freq == None:
+        dt = dt[1]-dt[0]
+        freq = 1/dt
+
     if freq > 75e6: # This is for 2082 only
         raise RuntimeError("Exceeds sampling rate")
         
@@ -209,41 +284,50 @@ def arb_wave_constructor(instr,
     instr.write("C{}:SRATE MODE,TARB,VALUE,{}".format(channel,freq))
     instr.write("C{}:ARWV NAME,{}".format(channel,wave_name))     
 
-def set_output_state(instr,channel=1,val="OFF"):
-    """
+def set_output_state(instr,channel:int=1,val:str="OFF"):
+    '''
     Sets the output state of a specified channel
-    
+
     Parameters
     ----------
-        instr : instrument
-        channel : int
-            1 or 2
-        val : str
-            OFF
-            ON
+    instr : TYPE
+        DESCRIPTION.
+    channel : int, optional
+        DESCRIPTION. The default is 1.
+    val : str, optional
+        DESCRIPTION. The default is "OFF".
 
+    Returns
+    -------
+    None.
+    
     Usage
     -----
         set_output_state(instrument,1,"ON") # to turn on
         set_output_state(instrument,1,"OFF") # to turn on
-        
-    """
+
+    '''
     instr.write("C{}:OUTP {}".format(channel,val))
 
 def deinitialise(instr):
-    """
+    '''
     Closes the instrument or resourcemanager
     Must be done at the end of the session or opening a new session
-    
+
     Parameters
     ----------
-        instr : instrument
-        
+    instr : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
     
     Usage
     -----
-        deinitialise(instruement)
-    """
+        deinitialise(instrument)
+
+    '''
     instr.close()
 
 # Script goes here
