@@ -13,6 +13,8 @@ used with other models with no or little tinkering in this module
 TODOs:
     1. Adjust the scaling factors on set scale to choose from the default scale values
     2. Add a functionality to automatically set the number of points acquired
+    3. Remove the write_to_csv_function
+    4. Rewrite the data acquisition functions
 """
 
 # Convert this entire thing using numpy arrays
@@ -21,6 +23,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import struct
 import gc
+import csv
 
 # Some env variables
 tdiv_enum = [100e-12, 200e-12, 500e-12, 1e-9,
@@ -30,6 +33,19 @@ tdiv_enum = [100e-12, 200e-12, 500e-12, 1e-9,
  1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
 
 HORI_NUM = 10
+
+def write_to_csv_columns(data, file_path):
+    # Transpose the data to switch rows and columns
+    transposed_data = list(map(list, zip(*data)))
+
+    # Open the CSV file in write mode
+    with open(file_path, 'w', newline='') as csv_file:
+        # Create a CSV writer object
+        csv_writer = csv.writer(csv_file)
+
+        # Write the transposed data to the CSV file
+        csv_writer.writerows(transposed_data)
+
 
 def resourcer():
     """
@@ -115,11 +131,12 @@ def main_desc(recv):
     code = struct.unpack('f', code_per_div)[0]
     adc_bit = struct.unpack('h', adc_bit)[0]
     tdiv = tdiv_enum[tdiv_index]
-    return vdiv, offset, interval, delay, tdiv, code, adc_bit
+    return vdiv, offset, interval, delay, tdiv, code, adc_bit, data_bytes
 # TODOs : 2. Add a functionality to automatically set the number of points acquired
 def readwaveform(instr,channel=1,s_interval=1,start_point=0):
     """
     Reads the waveform for a single channel
+    # CHECK THE data_bytes here, if it changes when the buffer is empty or not
     """
     # Set the channel to be read from
     instr.write(":WAVeform:SOURce C"+str(channel))
@@ -131,11 +148,12 @@ def readwaveform(instr,channel=1,s_interval=1,start_point=0):
     recv_rtn = instr.read_raw().rstrip()
     # Processing the preamble
     recv = recv_all[recv_all.find(b'#') + 11:]
-    vdiv, ofst, interval, trdl, tdiv, vcode_per, adc_bit = main_desc(recv)
+    vdiv, ofst, interval, trdl, tdiv, vcode_per, adc_bit, data_bytes = main_desc(recv)
     # Procesing the data using the preamble
     block_start = recv_rtn.find(b'#')
     data_digit = int(recv_rtn[block_start + 1:block_start + 2])
     data_start = block_start + 2 + data_digit
+    print(recv_rtn[block_start:block_start +2+data_digit])
     recv_data = list(recv_rtn[data_start:])
     convert_data =[]
     if adc_bit > 8:
@@ -180,17 +198,21 @@ def burst_read(instr,channel=1,s_interval=1,start_point=0):
         for i in range(len(channel)):
             instr.write(":WAVeform:SOURce C"+str(channel[i]))
             instr.write("WAV:PREamble?")
-            # Might need delays in between for some reason
             recv_all[i] = instr.read_raw()
-            instr.write(":WAVeform:DATA?")
-            recv_rtn[i] = instr.read_raw().rstrip()
+            while True: # Fix for the delay problem !!! Note this and rewrite this entire portion
+                instr.write(":WAVeform:DATA?")
+                recv_rtn[i] = instr.read_raw().rstrip()
+                block_start = recv_rtn[i].find(b'#')
+                g = int(recv_rtn[i][block_start+2:block_start+2+9])
+                if g>0:
+                    break
         instr.write(":TRIGger:RUN")    
         # Processing the channel data
         volt_value = {}
         for i in range(len(channel)): 
             # Processing the preamble
             recv = recv_all[i][recv_all[i].find(b'#') + 11:]
-            vdiv, ofst, interval, trdl, tdiv, vcode_per, adc_bit = main_desc(recv)
+            vdiv, ofst, interval, trdl, tdiv, vcode_per, adc_bit, data_bytes = main_desc(recv)
             # Procesing the data using the preamble
             block_start = recv_rtn[i].find(b'#')
             data_digit = int(recv_rtn[i][block_start + 1:block_start + 2])
